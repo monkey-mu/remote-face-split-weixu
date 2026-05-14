@@ -1,0 +1,23 @@
+menu "Remote Face Client"
+
+config REMOTE_FACE_WIFI_SSID
+    string "WiFi SSID"
+    default ""
+
+config REMOTE_FACE_WIFI_PASSWORD
+    string "WiFi password"
+    default ""
+
+config REMOTE_FACE_DETECT_URL
+    string "PC detect URL"
+    default "http://192.168.1.23:8080/detect"
+
+config REMOTE_FACE_HTTP_TIMEOUT_MS
+    int "HTTP timeout ms"
+    default 10000
+
+config REMOTE_FACE_DETECT_INTERVAL_MS
+    int "Detect interval ms"
+    default 800
+
+endmenu
