@@ -247,13 +247,21 @@ static void create_ui(void)
         lv_obj_add_flag(box_lines[i], LV_OBJ_FLAG_HIDDEN);
     }
 
-    status_label = lv_label_create(screen);
-    lv_obj_set_pos(status_label, 10, 254);
+    lv_obj_t *status_panel = lv_obj_create(screen);
+    lv_obj_remove_style_all(status_panel);
+    lv_obj_set_pos(status_panel, 0, 240);
+    lv_obj_set_size(status_panel, 240, 80);
+    lv_obj_set_style_bg_color(status_panel, lv_color_hex(0x111820), 0);
+    lv_obj_set_style_bg_opa(status_panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_text_color(status_panel, lv_color_hex(0xEAF2F8), 0);
+
+    status_label = lv_label_create(status_panel);
+    lv_obj_set_pos(status_label, 10, 14);
     lv_obj_set_width(status_label, 220);
     lv_label_set_text(status_label, "connecting");
 
-    count_label = lv_label_create(screen);
-    lv_obj_set_pos(count_label, 10, 286);
+    count_label = lv_label_create(status_panel);
+    lv_obj_set_pos(count_label, 10, 46);
     lv_label_set_text(count_label, "faces: 0");
 }
 
