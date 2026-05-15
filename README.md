@@ -60,6 +60,16 @@ idf.py menuconfig
 idf.py build flash monitor
 ```
 
+如果屏幕文字出现彩色边缘、底色发蓝或颜色明显异常，请删除旧配置后重新配置：
+
+```bash
+rm -f sdkconfig sdkconfig.old
+idf.py set-target esp32s3
+idf.py menuconfig
+```
+
+本工程需要保持 `CONFIG_LV_COLOR_16_SWAP=y`，这和原 `who_weixue` 工程的 LVGL 颜色配置一致。
+
 ## 3. WSL2 同步代码
 
 如果你通过 GitHub 同步：
@@ -122,4 +132,3 @@ X-Image-Endian: BE
 ### 首次启动电脑端很慢
 
 第一次会下载 YOLO 权重，这是正常的。下载完成后，后续会直接使用本地模型文件。
-
