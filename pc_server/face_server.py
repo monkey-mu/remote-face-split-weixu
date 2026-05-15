@@ -1,17 +1,18 @@
 import argparse
+from pathlib import Path
 import time
 
-import cv2
 import numpy as np
 from flask import Flask, jsonify, request
+from huggingface_hub import hf_hub_download
+from ultralytics import YOLO
 
 
 app = Flask(__name__)
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
-if face_cascade.empty():
-    raise RuntimeError("failed to load OpenCV Haar cascade")
+ROOT_DIR = Path(__file__).resolve().parent
+MODEL_DIR = ROOT_DIR / "models"
+MODEL_PATH = MODEL_DIR / "yolov8n-face.pt"
+model = None
 
 
 def rgb565_to_bgr(frame: bytes, width: int, height: int, endian: str) -> np.ndarray:
@@ -31,9 +32,28 @@ def rgb565_to_bgr(frame: bytes, width: int, height: int, endian: str) -> np.ndar
     return np.dstack((b, g, r))
 
 
+def load_model() -> YOLO:
+    global model
+    if model is not None:
+        return model
+
+    MODEL_DIR.mkdir(exist_ok=True)
+    if not MODEL_PATH.exists():
+        downloaded = hf_hub_download(
+            repo_id="deepghs/yolo-face",
+            filename="yolov8n-face/model.pt",
+            local_dir=MODEL_DIR,
+            local_dir_use_symlinks=False,
+        )
+        Path(downloaded).replace(MODEL_PATH)
+
+    model = YOLO(str(MODEL_PATH))
+    return model
+
+
 @app.get("/health")
 def health():
-    return jsonify({"ok": True, "time": time.time()})
+    return jsonify({"ok": True, "model": "yolov8n-face", "time": time.time()})
 
 
 @app.post("/detect")
@@ -49,7 +69,6 @@ def detect():
 
     fmt = request.headers.get("X-Image-Format", "RGB565").upper()
     endian = request.headers.get("X-Image-Endian", "BE").upper()
-
     if fmt != "RGB565":
         return jsonify({"error": f"unsupported format: {fmt}"}), 400
     if endian not in ("BE", "LE"):
@@ -60,40 +79,42 @@ def detect():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
-    small_w = 160
-    small_h = max(1, int(height * small_w / width))
-    small = cv2.resize(bgr, (small_w, small_h), interpolation=cv2.INTER_AREA)
-    gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.08,
-        minNeighbors=5,
-        minSize=(22, 22),
+    detector = load_model()
+    results = detector.predict(
+        source=bgr,
+        imgsz=320,
+        conf=0.35,
+        iou=0.45,
+        verbose=False,
     )
 
     result = []
-    scale_x = width / small_w
-    scale_y = height / small_h
-    for x, y, w, h in faces[:5]:
-        result.append(
-            {
-                "x1": int(x * scale_x),
-                "y1": int(y * scale_y),
-                "x2": int((x + w) * scale_x),
-                "y2": int((y + h) * scale_y),
-                "score": 1.0,
-            }
-        )
+    if results and results[0].boxes is not None:
+        xyxy = results[0].boxes.xyxy.cpu().numpy()
+        confs = results[0].boxes.conf.cpu().numpy()
+        for box, score in list(zip(xyxy, confs))[:5]:
+            x1, y1, x2, y2 = box
+            result.append(
+                {
+                    "x1": max(0, min(width - 1, int(x1))),
+                    "y1": max(0, min(height - 1, int(y1))),
+                    "x2": max(0, min(width - 1, int(x2))),
+                    "y2": max(0, min(height - 1, int(y2))),
+                    "score": round(float(score), 4),
+                }
+            )
 
-    return jsonify({"faces": result, "count": len(result)})
+    return jsonify({"faces": result, "count": len(result), "model": "yolov8n-face"})
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--warmup", action="store_true", help="load YOLO before serving")
     args = parser.parse_args()
+    if args.warmup:
+        load_model()
     app.run(host=args.host, port=args.port, threaded=True)
 
 

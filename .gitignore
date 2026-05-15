@@ -1,0 +1,7 @@
+pc_server/.venv/
+pc_server/models/
+__pycache__/
+*.pyc
+esp32s3_client/build/
+esp32s3_client/sdkconfig
+esp32s3_client/sdkconfig.old

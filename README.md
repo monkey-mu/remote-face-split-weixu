@@ -6,7 +6,7 @@ Architecture:
 
 - ESP32S3 keeps camera, LCD, touch and LVGL UI.
 - ESP32S3 captures `240x240` RGB565 frames and sends them to the PC over HTTP.
-- The PC runs OpenCV face detection and returns JSON boxes.
+- The PC runs `yolov8n-face` detection and returns JSON boxes.
 - ESP32S3 draws the camera preview and returned face boxes locally.
 
 ## 1. Start the PC server
@@ -15,8 +15,10 @@ Architecture:
 cd remote_face_split\pc_server
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
-.\.venv\Scripts\python face_server.py --host 0.0.0.0 --port 8080
+.\.venv\Scripts\python face_server.py --host 0.0.0.0 --port 8080 --warmup
 ```
+
+The first startup downloads `yolov8n-face` from Hugging Face into `pc_server\models\yolov8n-face.pt`.
 
 Check the PC IP address:
 
